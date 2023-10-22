@@ -39,14 +39,14 @@ module Value =
 [<RequireQualifiedAccess>]
 module Runner =
 
-    let fetchBlock (tokens: Token list) =
+    let fetchBlock (tokens: Token list) : Token list * Token list =
 
         let rec inner tokens cur bracketCount =
 
             match tokens with
-            | [] -> (None, [])
+            | [] -> failwith $"Expected some more tokens"
             | OpenBracket :: tail -> inner tail cur (bracketCount + 1)
-            | CloseBracket :: tail when bracketCount = 1 -> (cur |> List.rev |> Some, tail)
+            | CloseBracket :: tail when bracketCount = 1 -> (cur |> List.rev, tail)
             | token :: tail -> inner tail (token :: cur) bracketCount
 
         inner tokens [] 0
@@ -99,7 +99,7 @@ module Runner =
 
         inner tokens []
 
-    let fetchIfTokens (tokens: Token list) (state: Map<string, Value>) : Token list * Token list =
+    let fetchIfTokens (tokens: Token list) (state: Map<string, Value>) : Token list option * Token list =
         let expressionTokens, tail = fetchExpressionArgs tokens OpenBracket
 
         let value = evalExpression expressionTokens state
@@ -108,16 +108,16 @@ module Runner =
         | None -> failwith $"expression {expressionTokens} did not evaluate to a bool"
         | Some b ->
 
-            let trueBlock, tail = fetchBlock tail
+            let trueBlock, tail = fetchBlock (OpenBracket :: tail)
 
             let falseBlock, tail =
                 match tail with
-                | Else :: OpenBracket :: tail -> fetchBlock tail
+                | Else :: tail ->
+                    let block, tail = fetchBlock tail
+                    block |> Some, tail
                 | _ -> None, tail
 
-            let block =
-                if b then trueBlock else falseBlock
-                |> Option.defaultWith (fun () -> failwith $"Selected block was none...")
+            let block = if b then trueBlock |> Some else falseBlock
 
             block, tail
 
@@ -142,6 +142,13 @@ module Runner =
                         | None -> failwith ("Undefined function " + functionName)
                     | If :: tail ->
                         let tokens, tail = fetchIfTokens tail state
+
+                        let tokens =
+                            tokens
+                            |> Option.defaultWith (fun () ->
+                                failwith
+                                    $"When assigning the result of an if-else to a variable, you need to provide both cases")
+
                         let _, ret = inner tokens state functions
                         Map.add name ret state, tail
                     | _ ->
@@ -156,12 +163,16 @@ module Runner =
 
             | If :: tail ->
                 let tokens, tail = fetchIfTokens tail state
-                let _ = inner tokens state functions
+
+                match tokens with
+                | None -> ()
+                | Some tokens -> inner tokens state functions |> ignore
+
                 inner tail state functions
 
             | Print :: OpenParenthesis :: value :: CloseParenthesis :: Semicolon :: tail ->
                 match value with
-                | Token.String str -> printfn "%A" str
+                | Token.String str -> str |> print
                 | Identifier id ->
                     match Map.tryFind id state with
                     | Some value -> value |> Value.toString |> print
@@ -174,9 +185,8 @@ module Runner =
                 let (newFunctions, newTail) =
                     let args, tail = fetchListOfArgs tail
 
-                    match fetchBlock tail with
-                    | (None, _) -> failwith $"Got invalid block, tokens: {tail}"
-                    | (Some block, tail) -> (Map.add functionName (args, block) functions, tail)
+                    let block, tail = fetchBlock tail
+                    Map.add functionName (args, block) functions, tail
 
                 inner newTail state newFunctions
 

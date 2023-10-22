@@ -2,6 +2,7 @@ module FsLox.Test
 
 open NUnit.Framework
 open Lox
+open System.Collections.Generic
 
 [<Test>]
 let TestBasic () =
@@ -96,21 +97,44 @@ let TestControlFlow () =
         |> Seq.toList
         |> Tokeniser.tokenise
 
-    let mutable lines = List.empty
-
-    let print: string -> unit =
-        fun s ->
-            lines <- s :: lines
-            ()
-
-    let output = Runner.run print tokens |> Map.toSeq |> dict
+    let lines = List<string>()
+    let output = Runner.run lines.Add tokens |> Map.toSeq |> dict
 
     let expected =
         [ "bool", Value.Boolean true; "value", Value.String "it was true!" ] |> dict
 
     Assert.That(output, Is.EqualTo(expected))
 
-    let expectedLines = [ "it was true!" ]
+    let expectedLines = [ "it was true!" ] |> List<string>
+    Assert.That(lines, Is.EqualTo(expectedLines))
+
+[<Test>]
+let TestControlFlow2 () =
+    let code =
+        """
+        var bool = true;
+
+        if bool {
+            print("It's true!");
+        }
+        """
+
+    let tokens =
+        code.Split("\n")
+        |> Seq.map (fun s -> s.TrimStart())
+        |> String.concat "\n"
+        |> Seq.toList
+        |> Tokeniser.tokenise
+
+    let lines = List<string>()
+
+    let output = Runner.run lines.Add tokens |> Map.toSeq |> dict
+
+    let expected = [ "bool", Value.Boolean true ] |> dict
+
+    Assert.That(output, Is.EqualTo(expected))
+
+    let expectedLines = [ "It's true!" ] |> List<string>
     Assert.That(lines, Is.EqualTo(expectedLines))
 
 

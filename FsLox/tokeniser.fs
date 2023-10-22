@@ -61,7 +61,7 @@ module Tokeniser =
         | 't' :: 'r' :: 'u' :: 'e' :: tail -> Boolean true :: tokenise tail
         | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail -> Boolean false :: tokenise tail
         | 'i' :: 'f' :: tail -> If :: tokenise tail
-        | 'e' :: 'l' :: 's' :: 'e' :: tail -> If :: tokenise tail
+        | 'e' :: 'l' :: 's' :: 'e' :: tail -> Else :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
         | '{' :: tail -> OpenBracket :: tokenise tail
