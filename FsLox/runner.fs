@@ -1,8 +1,13 @@
 namespace Lox
 
+type Value =
+    | String of string
+    | Number of double
+    | Boolean of bool
+    | Unit
+
 [<RequireQualifiedAccess>]
 module Runner =
-
 
     let fetchBlock (tokens: Token list) =
 
@@ -39,12 +44,6 @@ module Runner =
 
         inner tokens []
 
-
-    type Value =
-        | String of string
-        | Number of double
-        | Boolean of bool
-        | Unit
 
     let valueToString (value: Value) : string =
         match value with
@@ -140,7 +139,7 @@ module Runner =
                     let args, tail = fetchListOfArgs tail
 
                     match fetchBlock tail with
-                    | (None, _) -> failwith "Got invalid block"
+                    | (None, _) -> failwith $"Got invalid block, tokens: {tail}"
                     | (Some block, tail) -> (Map.add functionName (args, block) functions, tail)
 
                 inner newTail state newFunctions

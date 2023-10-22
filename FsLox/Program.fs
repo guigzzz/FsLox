@@ -8,7 +8,7 @@ let main argv =
         |> Array.head
         |> System.IO.File.ReadAllText
         |> Seq.toList
-        |> Tokeniser.tokenize
+        |> Tokeniser.tokenise
 
     tokens |> printfn "%A"
 

@@ -20,9 +20,9 @@ type Token =
 [<RequireQualifiedAccess>]
 module Tokeniser =
 
-    let stringOfChars chars = new string [| for c in chars -> c |]
+    let private stringOfChars chars = new string [| for c in chars -> c |]
 
-    let fetchString chars =
+    let private fetchString chars =
         let rec inner chars cur =
             match chars with
             | [] -> (None, [])
@@ -31,7 +31,7 @@ module Tokeniser =
 
         inner chars []
 
-    let fetchIdentifier chars =
+    let private fetchIdentifier chars =
         let rec inner chars cur =
             match chars with
             | []
@@ -44,28 +44,32 @@ module Tokeniser =
 
         inner chars []
 
-    let rec tokenize chars : list<Token> =
+    let rec tokenise chars : list<Token> =
         match chars with
         | [] -> []
         | ' ' :: tail
-        | '\n' :: tail -> tokenize tail
-        | ';' :: tail -> Semicolon :: tokenize tail
-        | '=' :: tail -> Equals :: tokenize tail
-        | 'v' :: 'a' :: 'r' :: tail -> Var :: tokenize tail
-        | 'p' :: 'r' :: 'i' :: 'n' :: 't' :: tail -> Print :: tokenize tail
-        | 'f' :: 'u' :: 'n' :: tail -> Fun :: tokenize tail
-        | '(' :: tail -> OpenParenthesis :: tokenize tail
-        | ')' :: tail -> CloseParenthesis :: tokenize tail
-        | '{' :: tail -> OpenBracket :: tokenize tail
-        | '}' :: tail -> CloseBracket :: tokenize tail
-        | ',' :: tail -> Comma :: tokenize tail
-        | '+' :: tail -> Plus :: tokenize tail
-        | 'r' :: 'e' :: 't' :: 'u' :: 'r' :: 'n' :: tail -> Return :: tokenize tail
+        | '\n' :: tail
+        | '\010' :: tail
+        | '\013' :: tail -> tokenise tail
+        | ';' :: tail -> Semicolon :: tokenise tail
+        | '=' :: tail -> Equals :: tokenise tail
+        | 'v' :: 'a' :: 'r' :: tail -> Var :: tokenise tail
+        | 'p' :: 'r' :: 'i' :: 'n' :: 't' :: tail -> Print :: tokenise tail
+        | 'f' :: 'u' :: 'n' :: tail -> Fun :: tokenise tail
+        | '(' :: tail -> OpenParenthesis :: tokenise tail
+        | ')' :: tail -> CloseParenthesis :: tokenise tail
+        | '{' :: tail -> OpenBracket :: tokenise tail
+        | '}' :: tail -> CloseBracket :: tokenise tail
+        | ',' :: tail -> Comma :: tokenise tail
+        | '+' :: tail -> Plus :: tokenise tail
+        | 'r' :: 'e' :: 't' :: 'u' :: 'r' :: 'n' :: tail -> Return :: tokenise tail
         | '"' :: tail ->
             match fetchString tail with
             | (None, _) -> failwith "unbounded string"
-            | (Some str, tail) -> String str :: tokenize tail
+            | (Some str, tail) -> String str :: tokenise tail
         | tail ->
             match fetchIdentifier tail with
             | (None, _) -> failwith ("unhandled case: " + stringOfChars chars)
-            | (Some str, tail) -> Identifier str :: tokenize tail
+            | (Some str, tail) -> Identifier str :: tokenise tail
+
+    let tokenise': string -> Token list = Seq.toList >> tokenise

@@ -1,0 +1,10 @@
+
+var bool = true
+
+var value = if (bool) {
+    return "it was true!";
+} else {
+    return "it was false!";
+}
+
+print(value);
