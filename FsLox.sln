@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLox", "FsLox\FsLox.fsproj", "{052B3983-80D3-48B8-8BFB-D840E8DA498C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FsLox.Test", "FsLox.Test\FsLox.Test.fsproj", "{9E8E9AC1-FB07-4185-A6D0-EAD1EFC9B886}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{052B3983-80D3-48B8-8BFB-D840E8DA498C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{052B3983-80D3-48B8-8BFB-D840E8DA498C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{052B3983-80D3-48B8-8BFB-D840E8DA498C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{052B3983-80D3-48B8-8BFB-D840E8DA498C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E8E9AC1-FB07-4185-A6D0-EAD1EFC9B886}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E8E9AC1-FB07-4185-A6D0-EAD1EFC9B886}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E8E9AC1-FB07-4185-A6D0-EAD1EFC9B886}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E8E9AC1-FB07-4185-A6D0-EAD1EFC9B886}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
