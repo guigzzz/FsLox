@@ -1,0 +1,7 @@
+fun hello(name) {
+    var ret = "hello " + name;
+    return ret;
+}
+var name = "Guillaume";
+var hello = hello(name);
+print(hello);
