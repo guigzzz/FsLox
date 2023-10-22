@@ -95,7 +95,7 @@ module Runner =
         inner tokens []
 
 
-    let run (tokens: Token list) : Map<string, Value> =
+    let run (print: string -> unit) (tokens: Token list) : Map<string, Value> =
         let rec inner tokens state functions : Map<string, Value> * Value =
             match tokens with
             | [] -> state, Unit
@@ -129,7 +129,7 @@ module Runner =
                 | Token.String str -> printfn "%A" str
                 | Identifier id ->
                     match Map.tryFind id state with
-                    | Some value -> value |> valueToString |> printfn "%s"
+                    | Some value -> value |> valueToString |> print
                     | None -> failwith ("unknown variable " + id)
                 | _ -> failwith ("unsupported arg to print: " + (sprintf "%A" value))
 

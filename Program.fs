@@ -14,7 +14,7 @@ let main argv =
 
     printfn "--- Interpreter stdout --- "
 
-    let state = tokens |> Runner.run
+    let state = tokens |> Runner.run (printfn "%s")
 
     printfn "--- Final state ---"
 
