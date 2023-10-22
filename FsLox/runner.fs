@@ -29,6 +29,7 @@ module Value =
             |> Option.defaultWith (fun () -> failwith $"Failed to find {name} in {state}")
         | Token.String str -> String str
         | Token.Boolean bl -> Boolean bl
+        | Token.Number n -> Number n
         | _ -> failwith $"Token does not represent a value: {tok}"
 
     let toBoolean (value: Value) : bool option =
@@ -134,9 +135,9 @@ module Runner =
 
                             let callArgs, tail = fetchFunctionCallArgs tail state
 
-                            let state = callArgs |> Seq.zip args |> Map.ofSeq
+                            let localFunctionState = callArgs |> Seq.zip args |> Map.ofSeq
 
-                            let _, ret = inner block state functions
+                            let _, ret = inner block localFunctionState functions
 
                             Map.add name ret state, tail
                         | None -> failwith ("Undefined function " + functionName)

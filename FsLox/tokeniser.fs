@@ -1,10 +1,14 @@
 namespace Lox
 
+open System
+
+
 type Token =
     | Var
     | Identifier of string
     | Equals
     | String of string
+    | Number of double
     | Boolean of bool
     | Print
     | Semicolon
@@ -36,13 +40,18 @@ module Tokeniser =
     let private fetchIdentifier chars =
         let rec inner chars cur =
             match chars with
-            | []
-            | ' ' :: _
-            | '=' :: _
-            | ';' :: _
-            | '(' :: _
-            | ')' :: _ -> (cur |> List.rev |> stringOfChars |> Some, chars)
-            | c :: tail -> inner tail (c :: cur)
+            | [] -> (None, [])
+            | c :: tail when c |> Char.IsLetter || c |> Char.IsDigit || c = '_' -> inner tail (c :: cur)
+            | _ -> (cur |> List.rev |> stringOfChars |> Some, chars)
+
+        inner chars []
+
+    let private fetchNumber chars : double option * char list =
+        let rec inner chars cur =
+            match chars with
+            | [] -> (None, [])
+            | c :: tail when c |> Char.IsDigit -> inner tail (c :: cur)
+            | _ -> (cur |> List.rev |> stringOfChars |> Double.Parse |> Some, chars)
 
         inner chars []
 
@@ -73,9 +82,15 @@ module Tokeniser =
             match fetchString tail with
             | (None, _) -> failwith "unbounded string"
             | (Some str, tail) -> String str :: tokenise tail
-        | tail ->
+        | tail when tail |> List.head |> Char.IsLetter ->
             match fetchIdentifier tail with
-            | (None, _) -> failwith ("unhandled case: " + stringOfChars chars)
+            | (None, _) -> failwith $"unhandled case: {stringOfChars chars}"
             | (Some str, tail) -> Identifier str :: tokenise tail
+
+        | tail when tail |> List.head |> Char.IsDigit ->
+            match fetchNumber tail with
+            | (None, _) -> failwith $"failed to parse number from chars: {stringOfChars chars}"
+            | (Some v, tail) -> Number v :: tokenise tail
+        | _ -> failwith $"Unexpected chars: {stringOfChars chars}"
 
     let tokenise': string -> Token list = Seq.toList >> tokenise

@@ -137,6 +137,70 @@ let TestControlFlow2 () =
     let expectedLines = [ "It's true!" ] |> List<string>
     Assert.That(lines, Is.EqualTo(expectedLines))
 
+[<Test>]
+let TestArithmetic () =
+    let code =
+        """
+        fun add3(a, b, c) {
+            return a + b + c;
+        }
+
+        var value = add3(1, 2, 3);
+        """
+
+    let tokens =
+        code.Split("\n")
+        |> Seq.map (fun s -> s.TrimStart())
+        |> String.concat "\n"
+        |> Seq.toList
+        |> Tokeniser.tokenise
+        |> List<Token>
+
+    let expectedTokens =
+        [ Fun
+          Identifier "add3"
+          OpenParenthesis
+          Identifier "a"
+          Comma
+          Identifier "b"
+          Comma
+          Identifier "c"
+          CloseParenthesis
+          OpenBracket
+          Return
+          Identifier "a"
+          Plus
+          Identifier "b"
+          Plus
+          Identifier "c"
+          Semicolon
+          CloseBracket
+          Var
+          Identifier "value"
+          Equals
+          Identifier "add3"
+          OpenParenthesis
+          Number 1
+          Comma
+          Number 2
+          Comma
+          Number 3
+          CloseParenthesis
+          Semicolon ]
+        |> List<Token>
+
+    Assert.That(tokens, Is.EqualTo(expectedTokens))
+
+    let lines = List<string>()
+
+    let output = tokens |> List.ofSeq |> Runner.run lines.Add |> Map.toSeq |> dict
+
+    let expected = [ "value", Value.Number 6. ] |> dict
+
+    Assert.That(output, Is.EqualTo(expected))
+
+    Assert.That(lines, Is.Empty)
+
 
 [<Test>]
 let TestTokeniserFunction () =
