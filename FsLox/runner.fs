@@ -7,6 +7,36 @@ type Value =
     | Unit
 
 [<RequireQualifiedAccess>]
+module Value =
+
+    let toString (value: Value) : string =
+        match value with
+        | String s -> s
+        | Number n -> n |> string
+        | Boolean b -> b |> string
+        | Unit -> "()"
+
+    let add (l: Value) (r: Value) : Value =
+        match l, r with
+        | String l, String r -> String(l + r)
+        | Number l, Number r -> Number(l + r)
+        | _ -> failwith $"Can't add these values as not the right types: {l}, {r}"
+
+    let ofToken (tok: Token) (state: Map<string, Value>) : Value =
+        match tok with
+        | Identifier name ->
+            Map.tryFind name state
+            |> Option.defaultWith (fun () -> failwith $"Failed to find {name} in {state}")
+        | Token.String str -> String str
+        | Token.Boolean bl -> Boolean bl
+        | _ -> failwith $"Token does not represent a value: {tok}"
+
+    let toBoolean (value: Value) : bool option =
+        match value with
+        | Boolean b -> b |> Some
+        | _ -> None
+
+[<RequireQualifiedAccess>]
 module Runner =
 
     let fetchBlock (tokens: Token list) =
@@ -35,47 +65,23 @@ module Runner =
         | OpenParenthesis :: tail -> inner tail []
         | _ -> failwith "unexpected token list"
 
-    let fetchExpressionArgs (tokens: Token list) : Token list * Token list =
+    let fetchExpressionArgs (tokens: Token list) (stopToken: Token) : Token list * Token list =
         let rec inner (tokens: Token list) (cur: Token list) =
             match tokens with
-            | Semicolon :: tail -> cur |> List.rev, tail
+            | tok :: tail when tok = stopToken -> cur |> List.rev, tail
             | h :: tail -> inner tail (h :: cur)
             | [] -> failwith $"Expected to find a semicolon"
 
         inner tokens []
 
-
-    let valueToString (value: Value) : string =
-        match value with
-        | String s -> s
-        | Number n -> n |> string
-        | Boolean b -> b |> string
-        | Unit -> "()"
-
-    let addValues (l: Value) (r: Value) : Value =
-        match l, r with
-        | String l, String r -> String(l + r)
-        | Number l, Number r -> Number(l + r)
-        | _ -> failwith $"Can't add these values as not the right types: {l}, {r}"
-
-    let tokenToValue (tok: Token) (state: Map<string, Value>) : Value =
-        match tok with
-        | Identifier name ->
-            Map.tryFind name state
-            |> Option.defaultWith (fun () -> failwith $"Failed to find {name} in {state}")
-        | Token.String str -> String str
-        | Token.Boolean bl -> Boolean bl
-        | _ -> failwith $"Token does not represent a value: {tok}"
-
-
     let rec evalExpression (tokens: Token list) (state: Map<string, Value>) : Value =
         match tokens with
         | Identifier name :: [] -> Map.find name state
-        | token :: [] -> tokenToValue token state
+        | token :: [] -> Value.ofToken token state
         | token :: Plus :: tail ->
             let rValue = evalExpression tail state
-            let lValue = tokenToValue token state
-            addValues lValue rValue
+            let lValue = Value.ofToken token state
+            Value.add lValue rValue
         | _ -> failwith $"Unsupported expression: {tokens}"
 
     type FunctionCallArgValue =
@@ -88,11 +94,32 @@ module Runner =
             match tail with
             | CloseParenthesis :: Semicolon :: tail -> cur |> List.rev, tail
             | Comma :: tail -> inner tail cur
-            | token :: tail -> inner tail (tokenToValue token state :: cur)
+            | token :: tail -> inner tail (Value.ofToken token state :: cur)
             | [] -> failwith $"Expected to find a semicolon"
 
         inner tokens []
 
+    let fetchIfTokens (tokens: Token list) (state: Map<string, Value>) : Token list * Token list =
+        let expressionTokens, tail = fetchExpressionArgs tokens OpenBracket
+
+        let value = evalExpression expressionTokens state
+
+        match Value.toBoolean value with
+        | None -> failwith $"expression {expressionTokens} did not evaluate to a bool"
+        | Some b ->
+
+            let trueBlock, tail = fetchBlock tail
+
+            let falseBlock, tail =
+                match tail with
+                | Else :: OpenBracket :: tail -> fetchBlock tail
+                | _ -> None, tail
+
+            let block =
+                if b then trueBlock else falseBlock
+                |> Option.defaultWith (fun () -> failwith $"Selected block was none...")
+
+            block, tail
 
     let run (print: string -> unit) (tokens: Token list) : Map<string, Value> =
         let rec inner tokens state functions : Map<string, Value> * Value =
@@ -113,8 +140,12 @@ module Runner =
 
                             Map.add name ret state, tail
                         | None -> failwith ("Undefined function " + functionName)
+                    | If :: tail ->
+                        let tokens, tail = fetchIfTokens tail state
+                        let _, ret = inner tokens state functions
+                        Map.add name ret state, tail
                     | _ ->
-                        let expressionTokens, tail = fetchExpressionArgs tail
+                        let expressionTokens, tail = fetchExpressionArgs tail Semicolon
 
                         let value = evalExpression expressionTokens state
 
@@ -123,12 +154,17 @@ module Runner =
 
                 inner tail state functions
 
+            | If :: tail ->
+                let tokens, tail = fetchIfTokens tail state
+                let _ = inner tokens state functions
+                inner tail state functions
+
             | Print :: OpenParenthesis :: value :: CloseParenthesis :: Semicolon :: tail ->
                 match value with
                 | Token.String str -> printfn "%A" str
                 | Identifier id ->
                     match Map.tryFind id state with
-                    | Some value -> value |> valueToString |> print
+                    | Some value -> value |> Value.toString |> print
                     | None -> failwith ("unknown variable " + id)
                 | _ -> failwith ("unsupported arg to print: " + (sprintf "%A" value))
 
@@ -144,7 +180,10 @@ module Runner =
 
                 inner newTail state newFunctions
 
-            | Return :: Identifier f :: Semicolon :: _ -> state, (state |> Map.find f)
+            | Return :: tail ->
+                let expressionTokens, tail = fetchExpressionArgs tail Semicolon
+                let value = evalExpression expressionTokens state
+                state, value
 
             | tokens -> failwith $"invalid expression: {tokens}. State: {state}"
 

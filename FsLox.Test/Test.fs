@@ -75,6 +75,46 @@ let TestFunctions () =
 
 
 [<Test>]
+let TestControlFlow () =
+    let code =
+        """
+        var bool = true;
+
+        var value = if bool {
+            return "it was true!";
+        } else {
+            return "it was false!";
+        }
+
+        print(value);
+        """
+
+    let tokens =
+        code.Split("\n")
+        |> Seq.map (fun s -> s.TrimStart())
+        |> String.concat "\n"
+        |> Seq.toList
+        |> Tokeniser.tokenise
+
+    let mutable lines = List.empty
+
+    let print: string -> unit =
+        fun s ->
+            lines <- s :: lines
+            ()
+
+    let output = Runner.run print tokens |> Map.toSeq |> dict
+
+    let expected =
+        [ "bool", Value.Boolean true; "value", Value.String "it was true!" ] |> dict
+
+    Assert.That(output, Is.EqualTo(expected))
+
+    let expectedLines = [ "it was true!" ]
+    Assert.That(lines, Is.EqualTo(expectedLines))
+
+
+[<Test>]
 let TestTokeniserFunction () =
     let code =
         """

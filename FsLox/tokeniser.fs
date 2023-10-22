@@ -16,6 +16,8 @@ type Token =
     | Plus
     | Comma
     | Return
+    | If
+    | Else
 
 [<RequireQualifiedAccess>]
 module Tokeniser =
@@ -56,6 +58,10 @@ module Tokeniser =
         | 'v' :: 'a' :: 'r' :: tail -> Var :: tokenise tail
         | 'p' :: 'r' :: 'i' :: 'n' :: 't' :: tail -> Print :: tokenise tail
         | 'f' :: 'u' :: 'n' :: tail -> Fun :: tokenise tail
+        | 't' :: 'r' :: 'u' :: 'e' :: tail -> Boolean true :: tokenise tail
+        | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail -> Boolean false :: tokenise tail
+        | 'i' :: 'f' :: tail -> If :: tokenise tail
+        | 'e' :: 'l' :: 's' :: 'e' :: tail -> If :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
         | '{' :: tail -> OpenBracket :: tokenise tail
