@@ -219,6 +219,32 @@ let TestControlFlow2 () =
     runTest code None expected expectedLines
 
 [<Test>]
+let TestFibonacci () =
+    let code =
+        """
+        var a = 0;
+        var b = 1;
+
+        var n = 10;
+
+        for i in 0 .. n {
+            var temp = a + b;
+            a <- b;
+            b <- temp;
+        }
+
+        print("fibo of 10 is:");
+        print(a);
+        """
+
+    let expected =
+        [ "a", Value.Number 55; "b", Value.Number 89; "n", Value.Number 10 ]
+        |> Map.ofSeq
+
+    let expectedLines = [ "fibo of 10 is:"; "55" ] |> List<string>
+    runTest code None expected expectedLines
+
+[<Test>]
 let TestArithmetic () =
     let code =
         """

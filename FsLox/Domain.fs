@@ -27,6 +27,11 @@ module Value =
         | Boolean b -> b |> Some
         | _ -> None
 
+    let toNumber (value: Value) : double option =
+        match value with
+        | Number b -> b |> Some
+        | _ -> None
+
 type Variables = Map<string, Value>
 
 type Function =
@@ -91,3 +96,10 @@ module ValueContext =
         | Token.Boolean bl -> Boolean bl
         | Token.Number n -> Number n
         | _ -> failwith $"Token does not represent a value: {tok}"
+
+    let toNumber (c: Context) (tok: Token) : double =
+        match tok with
+        | Identifier name -> c |> Context.getVar name |> Value.toNumber
+        | Token.Number n -> n |> Some
+        | _ -> failwith $"Token does not represent a value: {tok}"
+        |> Option.defaultWith (fun () -> failwith $"{tok} did not represent a numeric value")

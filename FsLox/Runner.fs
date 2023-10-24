@@ -159,18 +159,27 @@ module Runner =
                 let context, tail = varAssignment name tail
                 inner tail context
 
-            | For :: Identifier loopVar :: In :: Token.Number s :: DoubleDot :: Token.Number e :: OpenBracket :: tail ->
+            | For :: Identifier loopVar :: In :: startToken :: DoubleDot :: endToken :: OpenBracket :: tail ->
 
                 let block, tail = fetchMatchingBracket tail OpenBracket CloseBracket
 
-                let context =
+                let s = startToken |> ValueContext.toNumber context
+                let e = endToken |> ValueContext.toNumber context
+
+                let retContext =
                     [ s .. (e - 1.) ]
                     |> List.fold
                         (fun context i -> context |> Context.addVar loopVar (Number i) |> inner block |> fst)
                         context
-                    |> Context.removeVar loopVar // don't leak loop var
 
-                inner tail context
+                let newContext =
+                    context.Variables
+                    |> Map.keys
+                    |> Seq.map (fun k -> k, Map.find k retContext.Variables)
+                    |> Map.ofSeq
+                    |> fun vars -> { context with Variables = vars }
+
+                inner tail newContext
 
             | If :: tail ->
                 let tokens, tail = fetchIfTokens tail context
