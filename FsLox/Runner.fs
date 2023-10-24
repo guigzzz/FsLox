@@ -124,30 +124,40 @@ module Runner =
 
     let run (print: string -> unit) (tokens: Token list) : Variables =
         let rec inner tokens (context: Context) : Variables * Value =
+
+            let varAssignment name tail =
+                match tail with
+                | If :: tail ->
+                    let tokens, tail = fetchIfTokens tail context
+
+                    let tokens =
+                        tokens
+                        |> Option.defaultWith (fun () ->
+                            failwith
+                                $"When assigning the result of an if-else to a variable, you need to provide both cases")
+
+                    let _, value = inner tokens context
+                    context |> Context.addVar name value, tail
+                | _ ->
+                    let expressionTokens, tail = fetchExpressionArgs tail Semicolon
+
+                    let value = evalExpression context expressionTokens
+
+                    context |> Context.addVar name value, tail
+
+
             match tokens with
             | [] -> context.Variables, Unit
             | Var :: Identifier name :: Equals :: tail ->
-                let newContext, tail =
-                    match tail with
-                    | If :: tail ->
-                        let tokens, tail = fetchIfTokens tail context
+                let context, tail = varAssignment name tail
+                inner tail context
 
-                        let tokens =
-                            tokens
-                            |> Option.defaultWith (fun () ->
-                                failwith
-                                    $"When assigning the result of an if-else to a variable, you need to provide both cases")
+            | Identifier name :: BackArrow :: tail ->
+                if context |> Context.varExists name |> not then
+                    failwith $"Can't reassign a variable that wasn't declared: '{name}'"
 
-                        let _, value = inner tokens context
-                        context |> Context.addVar name value, tail
-                    | _ ->
-                        let expressionTokens, tail = fetchExpressionArgs tail Semicolon
-
-                        let value = evalExpression context expressionTokens
-
-                        context |> Context.addVar name value, tail
-
-                inner tail newContext
+                let context, tail = varAssignment name tail
+                inner tail context
 
             | If :: tail ->
                 let tokens, tail = fetchIfTokens tail context
@@ -177,12 +187,12 @@ module Runner =
 
                 let expressionTokens, tail = fetchExpressionArgs tail Semicolon
 
-                let args, tail =
+                let args, expressionTail =
                     fetchMatchingBracket expressionTokens OpenParenthesis CloseParenthesis
 
                 let callArgs = args |> splitByToken Comma |> List.map (evalExpression context)
 
-                if tail |> List.isEmpty |> not && tail <> [ Semicolon ] then
+                if expressionTail |> List.isEmpty |> not && expressionTail <> [ Semicolon ] then
                     failwith $"operations after a function call isn't yet supported. Toks: {tail}"
 
                 context |> callFunc callArgs name |> ignore

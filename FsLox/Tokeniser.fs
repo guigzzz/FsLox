@@ -21,6 +21,7 @@ type Token =
     | Return
     | If
     | Else
+    | BackArrow
 
 [<RequireQualifiedAccess>]
 module Tokeniser =
@@ -69,6 +70,7 @@ module Tokeniser =
         | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail -> Boolean false :: tokenise tail
         | 'i' :: 'f' :: tail -> If :: tokenise tail
         | 'e' :: 'l' :: 's' :: 'e' :: tail -> Else :: tokenise tail
+        | '<' :: '-' :: tail -> BackArrow :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
         | '{' :: tail -> OpenBracket :: tokenise tail

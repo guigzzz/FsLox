@@ -75,6 +75,7 @@ module Context =
             let funs = c.Variables |> Map.keys |> String.concat ", "
             failwith $"Failed to find variable called '{name}'. Options were: {funs}")
 
+    let varExists (name: string) (c: Context) : bool = c.Variables |> Map.containsKey name
 
 [<RequireQualifiedAccess>]
 module ValueContext =
