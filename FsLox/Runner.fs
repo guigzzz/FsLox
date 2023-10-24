@@ -55,7 +55,7 @@ module Runner =
             match tail with
             | CloseParenthesis :: Semicolon :: tail -> cur |> List.rev, tail
             | Comma :: tail -> inner tail cur
-            | token :: tail -> inner tail (Value.ofToken token c :: cur)
+            | token :: tail -> inner tail (ValueContext.ofToken token c :: cur)
             | [] -> failwith $"Expected to find a semicolon"
 
         inner tokens []
@@ -79,10 +79,10 @@ module Runner =
     let rec evalExpression (context: Context) (tokens: Token list) : Value =
         match tokens with
         | Identifier name :: [] -> context |> Context.getVar name
-        | token :: [] -> Value.ofToken token context
+        | token :: [] -> ValueContext.ofToken token context
         | token :: Plus :: tail ->
             let rValue = evalExpression context tail
-            let lValue = Value.ofToken token context
+            let lValue = ValueContext.ofToken token context
             Value.add lValue rValue
         | Identifier name :: OpenParenthesis :: tail ->
             let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
@@ -124,9 +124,6 @@ module Runner =
 
     let run (print: string -> unit) (tokens: Token list) : Variables =
         let rec inner tokens (context: Context) : Variables * Value =
-            let functions = context.Functions
-            let state = context.Variables
-
             match tokens with
             | [] -> context.Variables, Unit
             | Var :: Identifier name :: Equals :: tail ->
@@ -161,17 +158,6 @@ module Runner =
 
                 inner tail context
 
-            | Print :: OpenParenthesis :: value :: CloseParenthesis :: Semicolon :: tail ->
-                match value with
-                | Token.String str -> str |> print
-                | Identifier id ->
-                    match Map.tryFind id state with
-                    | Some value -> value |> Value.toString |> print
-                    | None -> failwith ("unknown variable " + id)
-                | _ -> failwith ("unsupported arg to print: " + (sprintf "%A" value))
-
-                inner tail context
-
             | Fun :: Identifier functionName :: tail ->
                 let (newContext, newTail) =
                     let args, tail = fetchListOfArgs tail
@@ -187,11 +173,27 @@ module Runner =
 
                 inner newTail newContext
 
+            | Identifier name :: OpenParenthesis :: tail ->
+
+                let expressionTokens, tail = fetchExpressionArgs tail Semicolon
+
+                let args, tail =
+                    fetchMatchingBracket expressionTokens OpenParenthesis CloseParenthesis
+
+                let callArgs = args |> splitByToken Comma |> List.map (evalExpression context)
+
+                if tail |> List.isEmpty |> not && tail <> [ Semicolon ] then
+                    failwith $"operations after a function call isn't yet supported. Toks: {tail}"
+
+                context |> callFunc callArgs name |> ignore
+
+                inner tail context
+
             | Return :: tail ->
                 let expressionTokens, tail = fetchExpressionArgs tail Semicolon
                 let value = evalExpression context expressionTokens
-                state, value
+                context.Variables, value
 
-            | tokens -> failwith $"invalid expression: {tokens}. State: {state}"
+            | tokens -> failwith $"invalid expression: {tokens}. Context: {context}"
 
-        inner tokens Context.empty |> fst
+        print |> Context.make |> inner tokens |> fst

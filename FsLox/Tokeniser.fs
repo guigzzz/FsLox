@@ -10,7 +10,6 @@ type Token =
     | String of string
     | Number of double
     | Boolean of bool
-    | Print
     | Semicolon
     | Fun
     | OpenParenthesis
@@ -65,7 +64,6 @@ module Tokeniser =
         | ';' :: tail -> Semicolon :: tokenise tail
         | '=' :: tail -> Equals :: tokenise tail
         | 'v' :: 'a' :: 'r' :: tail -> Var :: tokenise tail
-        | 'p' :: 'r' :: 'i' :: 'n' :: 't' :: tail -> Print :: tokenise tail
         | 'f' :: 'u' :: 'n' :: tail -> Fun :: tokenise tail
         | 't' :: 'r' :: 'u' :: 'e' :: tail -> Boolean true :: tokenise tail
         | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail -> Boolean false :: tokenise tail

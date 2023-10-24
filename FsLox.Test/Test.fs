@@ -87,6 +87,20 @@ let TestFunctions2 () =
     let expectedLines = [ "hello Guillaume!" ]
     runTest code None expected expectedLines
 
+[<Test>]
+let TestFunctionsArgOrderOk () =
+
+    let code =
+        """
+        fun concat(a, b) {
+            return a + b;
+        }
+        var value = concat("hello ", "world");
+        """
+
+    let expected = [ "value", Value.String "hello world" ] |> Map.ofSeq
+    runTest code None expected []
+
 
 [<Test>]
 let TestControlFlow () =
@@ -171,7 +185,6 @@ let TestArithmetic () =
 
     let expected = [ "value", Value.Number 6. ] |> Map.ofSeq
     runTest code expectedTokens expected []
-
 
 [<Test>]
 let TestTokeniserFunction () =

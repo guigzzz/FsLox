@@ -6,6 +6,27 @@ type Value =
     | Boolean of bool
     | Unit
 
+[<RequireQualifiedAccess>]
+module Value =
+
+    let toString (value: Value) : string =
+        match value with
+        | String s -> s
+        | Number n -> n |> string
+        | Boolean b -> b |> string
+        | Unit -> "()"
+
+    let add (l: Value) (r: Value) : Value =
+        match l, r with
+        | String l, String r -> String(l + r)
+        | Number l, Number r -> Number(l + r)
+        | _ -> failwith $"Can't add these values as not the right types: {l}, {r}"
+
+    let toBoolean (value: Value) : bool option =
+        match value with
+        | Boolean b -> b |> Some
+        | _ -> None
+
 type Variables = Map<string, Value>
 
 type Function =
@@ -22,10 +43,15 @@ type Context =
 
 [<RequireQualifiedAccess>]
 module Context =
+    let make (print: string -> unit) =
+        let printBuiltinArg = ""
 
-    let empty =
+        let print vars =
+            vars |> Map.find printBuiltinArg |> Value.toString |> print
+            Unit
+
         { Variables = Map.empty
-          Functions = Map.empty }
+          Functions = [ "print", Function.make [ printBuiltinArg ] print ] |> Map.ofSeq }
 
     let getFunc (name: string) (c: Context) : Function =
         c.Functions
@@ -51,20 +77,7 @@ module Context =
 
 
 [<RequireQualifiedAccess>]
-module Value =
-
-    let toString (value: Value) : string =
-        match value with
-        | String s -> s
-        | Number n -> n |> string
-        | Boolean b -> b |> string
-        | Unit -> "()"
-
-    let add (l: Value) (r: Value) : Value =
-        match l, r with
-        | String l, String r -> String(l + r)
-        | Number l, Number r -> Number(l + r)
-        | _ -> failwith $"Can't add these values as not the right types: {l}, {r}"
+module ValueContext =
 
     let ofToken (tok: Token) (c: Context) : Value =
         match tok with
@@ -73,8 +86,3 @@ module Value =
         | Token.Boolean bl -> Boolean bl
         | Token.Number n -> Number n
         | _ -> failwith $"Token does not represent a value: {tok}"
-
-    let toBoolean (value: Value) : bool option =
-        match value with
-        | Boolean b -> b |> Some
-        | _ -> None
