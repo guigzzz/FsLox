@@ -123,7 +123,7 @@ module Runner =
             block, tail
 
     let run (print: string -> unit) (tokens: Token list) : Variables =
-        let rec inner tokens (context: Context) : Variables * Value =
+        let rec inner tokens (context: Context) : Context * Value =
 
             let varAssignment name tail =
                 match tail with
@@ -147,7 +147,7 @@ module Runner =
 
 
             match tokens with
-            | [] -> context.Variables, Unit
+            | [] -> context, Unit
             | Var :: Identifier name :: Equals :: tail ->
                 let context, tail = varAssignment name tail
                 inner tail context
@@ -157,6 +157,19 @@ module Runner =
                     failwith $"Can't reassign a variable that wasn't declared: '{name}'"
 
                 let context, tail = varAssignment name tail
+                inner tail context
+
+            | For :: Identifier loopVar :: In :: Token.Number s :: DoubleDot :: Token.Number e :: OpenBracket :: tail ->
+
+                let block, tail = fetchMatchingBracket tail OpenBracket CloseBracket
+
+                let context =
+                    [ s .. (e - 1.) ]
+                    |> List.fold
+                        (fun context i -> context |> Context.addVar loopVar (Number i) |> inner block |> fst)
+                        context
+                    |> Context.removeVar loopVar // don't leak loop var
+
                 inner tail context
 
             | If :: tail ->
@@ -202,8 +215,8 @@ module Runner =
             | Return :: tail ->
                 let expressionTokens, tail = fetchExpressionArgs tail Semicolon
                 let value = evalExpression context expressionTokens
-                context.Variables, value
+                context, value
 
             | tokens -> failwith $"invalid expression: {tokens}. Context: {context}"
 
-        print |> Context.make |> inner tokens |> fst
+        print |> Context.make |> inner tokens |> fst |> (fun c -> c.Variables)

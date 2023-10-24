@@ -17,6 +17,9 @@ type Token =
     | OpenBracket
     | CloseBracket
     | Plus
+    | For
+    | In
+    | DoubleDot
     | Comma
     | Return
     | If
@@ -71,6 +74,9 @@ module Tokeniser =
         | 'i' :: 'f' :: tail -> If :: tokenise tail
         | 'e' :: 'l' :: 's' :: 'e' :: tail -> Else :: tokenise tail
         | '<' :: '-' :: tail -> BackArrow :: tokenise tail
+        | 'f' :: 'o' :: 'r' :: tail -> For :: tokenise tail
+        | 'i' :: 'n' :: tail -> In :: tokenise tail
+        | '.' :: '.' :: tail -> DoubleDot :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
         | '{' :: tail -> OpenBracket :: tokenise tail

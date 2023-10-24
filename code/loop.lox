@@ -1,0 +1,8 @@
+
+var counter = 0;
+
+for i in 0 .. 10 {
+    counter <- counter + 1;
+}
+
+print(counter);

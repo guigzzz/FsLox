@@ -101,6 +101,85 @@ let TestFunctionsArgOrderOk () =
     let expected = [ "value", Value.String "hello world" ] |> Map.ofSeq
     runTest code None expected []
 
+[<Test>]
+let TestMutation () =
+    let code =
+        """
+        var a = 1;
+        print(a);
+        a <- a + 1;
+        print(a);
+        """
+
+    let tokens =
+        [ Var
+          Identifier "a"
+          Equals
+          Number 1
+          Semicolon
+          Identifier "print"
+          OpenParenthesis
+          Identifier "a"
+          CloseParenthesis
+          Semicolon
+          Identifier "a"
+          BackArrow
+          Identifier "a"
+          Plus
+          Number 1
+          Semicolon
+          Identifier "print"
+          OpenParenthesis
+          Identifier "a"
+          CloseParenthesis
+          Semicolon ]
+        |> Some
+
+    let expected = [ "a", Value.Number 2.0 ] |> Map.ofSeq
+    runTest code tokens expected [ "1"; "2" ]
+
+[<Test>]
+let TestLoop () =
+    let code =
+        """
+        var counter = 0;
+
+        for i in 0 .. 10 {
+            counter <- counter + 1;
+        }
+
+        print(counter);
+        """
+
+    let tokens =
+        [ Var
+          Identifier "counter"
+          Equals
+          Number 0
+          Semicolon
+          For
+          Identifier "i"
+          In
+          Number 0
+          DoubleDot
+          Number 10
+          OpenBracket
+          Identifier "counter"
+          BackArrow
+          Identifier "counter"
+          Plus
+          Number 1
+          Semicolon
+          CloseBracket
+          Identifier "print"
+          OpenParenthesis
+          Identifier "counter"
+          CloseParenthesis
+          Semicolon ]
+        |> Some
+
+    let expected = [ "counter", Value.Number 10.0 ] |> Map.ofSeq
+    runTest code tokens expected [ "10" ]
 
 [<Test>]
 let TestControlFlow () =

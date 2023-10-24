@@ -68,6 +68,10 @@ module Context =
         { c with
             Variables = c.Variables |> Map.add name value }
 
+    let removeVar (name: string) (c: Context) : Context =
+        { c with
+            Variables = c.Variables |> Map.remove name }
+
     let getVar (name: string) (c: Context) : Value =
         c.Variables
         |> Map.tryFind name
