@@ -77,8 +77,6 @@ module Runner =
         func.Func localFunctionState
 
     let rec evalExpression (context: Context) (tokens: Token list) : Value =
-        printfn "%A" context.Variables
-
         match tokens with
         | Identifier name :: [] -> context |> Context.getVar name
         | token :: [] -> Value.ofToken token context
@@ -181,7 +179,6 @@ module Runner =
                     let block, tail = fetchBlock tail
 
                     let runFunc vars =
-                        printfn $"Calling function '{functionName}', vars={vars}"
                         inner block ({ context with Variables = vars }) |> snd
 
                     let func = Function.make args runFunc
