@@ -4,6 +4,7 @@
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Util.fs" />
     <Compile Include="Tokeniser.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Runner.fs" />

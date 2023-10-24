@@ -4,11 +4,6 @@ open NUnit.Framework
 open Lox
 open System.Collections.Generic
 
-[<RequireQualifiedAccess>]
-module Dictionary =
-
-    let ofMap (map: Map<_, _>) : IDictionary<_, _> = map |> Map.toSeq |> dict
-
 let runTest
     (code: string)
     (expectedTokens: Token list option)
