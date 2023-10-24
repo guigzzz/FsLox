@@ -10,8 +10,6 @@ let main argv =
         |> Seq.toList
         |> Tokeniser.tokenise
 
-    tokens |> printfn "%A"
-
     printfn "--- Interpreter stdout --- "
 
     let state = tokens |> Runner.run (printfn "%s")

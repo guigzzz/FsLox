@@ -1,7 +1,5 @@
 namespace Lox
 
-
-
 [<RequireQualifiedAccess>]
 module Runner =
 
@@ -51,7 +49,6 @@ module Runner =
 
         inner tokens []
 
-
     let fetchFunctionCallArgs (tokens: Token list) (c: Context) : Value list * Token list =
 
         let rec inner (tail: Token list) (cur: Value list) =
@@ -66,7 +63,7 @@ module Runner =
     let splitByToken (token: Token) (toks: Token list) : Token list list =
         let rec inner (toks: Token list) (cur: Token list) (out: Token list list) =
             match toks with
-            | [] -> out
+            | [] -> ((cur |> List.rev) :: out) |> List.rev
             | t :: tail when t = token ->
                 let cur = cur |> List.rev
                 inner tail [] (cur :: out)
@@ -74,7 +71,14 @@ module Runner =
 
         inner toks [] []
 
+    let callFunc (callArgs: Value list) (name: string) (context: Context) : Value =
+        let func = context |> Context.getFunc name
+        let localFunctionState = callArgs |> Seq.zip func.Args |> Map.ofSeq
+        func.Func localFunctionState
+
     let rec evalExpression (context: Context) (tokens: Token list) : Value =
+        printfn "%A" context.Variables
+
         match tokens with
         | Identifier name :: [] -> context |> Context.getVar name
         | token :: [] -> Value.ofToken token context
@@ -83,26 +87,19 @@ module Runner =
             let lValue = Value.ofToken token context
             Value.add lValue rValue
         | Identifier name :: OpenParenthesis :: tail ->
-
             let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
-
             let callArgs = args |> splitByToken Comma |> List.map (evalExpression context)
 
-            let func = context |> Context.getFunc name
-
-            let localFunctionState = callArgs |> Seq.zip func.Args |> Map.ofSeq
-
             if tail |> List.isEmpty |> not then
-                failwith $"operations after a function call isn't yet supported"
+                failwith $"operations after a function call isn't yet supported. Toks: {tail}"
 
-            func.Func localFunctionState
+            context |> callFunc callArgs name
+
         | _ -> failwith $"Unsupported expression: {tokens}"
 
     type FunctionCallArgValue =
         | Variable of string
         | Value of Value
-
-
 
     let fetchIfTokens (tokens: Token list) (context: Context) : Token list option * Token list =
 
@@ -137,18 +134,6 @@ module Runner =
             | Var :: Identifier name :: Equals :: tail ->
                 let newContext, tail =
                     match tail with
-                    | Identifier functionName :: OpenParenthesis :: tail ->
-                        match Map.tryFind functionName functions with
-                        | Some f ->
-
-                            let callArgs, tail = fetchFunctionCallArgs tail context
-
-                            let localFunctionState = callArgs |> Seq.zip f.Args |> Map.ofSeq
-
-                            let value = f.Func localFunctionState
-
-                            context |> Context.addVar name value, tail
-                        | None -> failwith ("Undefined function " + functionName)
                     | If :: tail ->
                         let tokens, tail = fetchIfTokens tail context
 
@@ -193,10 +178,10 @@ module Runner =
                 let (newContext, newTail) =
                     let args, tail = fetchListOfArgs tail
 
-
                     let block, tail = fetchBlock tail
 
                     let runFunc vars =
+                        printfn $"Calling function '{functionName}', vars={vars}"
                         inner block ({ context with Variables = vars }) |> snd
 
                     let func = Function.make args runFunc
