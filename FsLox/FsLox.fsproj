@@ -4,8 +4,9 @@
     <TargetFramework>net7.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="tokeniser.fs" />
-    <Compile Include="runner.fs" />
+    <Compile Include="Tokeniser.fs" />
+    <Compile Include="Domain.fs" />
+    <Compile Include="Runner.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 </Project>

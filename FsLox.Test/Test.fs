@@ -4,29 +4,40 @@ open NUnit.Framework
 open Lox
 open System.Collections.Generic
 
+[<RequireQualifiedAccess>]
+module Dictionary =
+
+    let ofMap (map: Map<_, _>) : IDictionary<_, _> = map |> Map.toSeq |> dict
+
+let runTest
+    (code: string)
+    (expectedTokens: Token list option)
+    (expectedEndState: Map<string, Value>)
+    (expectedLines: string seq)
+    =
+    let tokens = code |> Seq.toList |> Tokeniser.tokenise
+
+    match expectedTokens with
+    | None -> ()
+    | Some t -> Assert.That(tokens |> List<Token>, t |> List<Token> |> Is.EqualTo)
+
+    let lines = List<string>()
+    let output = Runner.run lines.Add tokens
+
+    Assert.That(output |> Dictionary.ofMap, Is.EqualTo(expectedEndState |> Dictionary.ofMap))
+    Assert.That(lines, Is.EqualTo(expectedLines |> List<string>))
+
+
 [<Test>]
 let TestBasic () =
-
     let code =
         "var hello = \"Hello, world!\";\
         print(hello);"
 
-    let tokens = code |> Seq.toList |> Tokeniser.tokenise
-
-    let mutable lines = List.empty
-
-    let print: string -> unit =
-        fun s ->
-            lines <- s :: lines
-            ()
-
-    let output = Runner.run print tokens
-
     let expected = [ "hello", Value.String "Hello, world!" ] |> Map.ofSeq
-    Assert.That(output, Is.EqualTo(expected))
-
     let expectedLines = [ "Hello, world!" ]
-    Assert.That(lines, Is.EqualTo(expectedLines))
+
+    runTest code None expected expectedLines
 
 
 [<Test>]
@@ -49,30 +60,37 @@ let TestFunctions () =
         print(hello);
         """
 
-    let tokens =
-        code.Split("\n")
-        |> Seq.map (fun s -> s.TrimStart())
-        |> String.concat "\n"
-        |> Seq.toList
-        |> Tokeniser.tokenise
+    let expected =
+        [ "name", Value.String "Guillaume"; "hello", Value.String "hello Guillaume!" ]
+        |> Map.ofSeq
 
-    let mutable lines = List.empty
+    let expectedLines = [ "hello Guillaume!" ]
+    runTest code None expected expectedLines
 
-    let print: string -> unit =
-        fun s ->
-            lines <- s :: lines
-            ()
+[<Test>]
+let TestFunctions2 () =
 
-    let output = Runner.run print tokens
+    let code =
+        """
+        fun add_exclamation(v) {
+            return v + "!";
+        }
+
+        fun hello(name) {
+            var ret = "hello " + name;
+            return add_exclamation(ret);
+        }
+        var name = "Guillaume";
+        var hello = hello(name);
+        print(hello);
+        """
 
     let expected =
         [ "name", Value.String "Guillaume"; "hello", Value.String "hello Guillaume!" ]
         |> Map.ofSeq
 
-    Assert.That(output, Is.EqualTo(expected))
-
     let expectedLines = [ "hello Guillaume!" ]
-    Assert.That(lines, Is.EqualTo(expectedLines))
+    runTest code None expected expectedLines
 
 
 [<Test>]
@@ -90,23 +108,12 @@ let TestControlFlow () =
         print(value);
         """
 
-    let tokens =
-        code.Split("\n")
-        |> Seq.map (fun s -> s.TrimStart())
-        |> String.concat "\n"
-        |> Seq.toList
-        |> Tokeniser.tokenise
-
-    let lines = List<string>()
-    let output = Runner.run lines.Add tokens |> Map.toSeq |> dict
-
     let expected =
-        [ "bool", Value.Boolean true; "value", Value.String "it was true!" ] |> dict
-
-    Assert.That(output, Is.EqualTo(expected))
+        [ "bool", Value.Boolean true; "value", Value.String "it was true!" ]
+        |> Map.ofSeq
 
     let expectedLines = [ "it was true!" ] |> List<string>
-    Assert.That(lines, Is.EqualTo(expectedLines))
+    runTest code None expected expectedLines
 
 [<Test>]
 let TestControlFlow2 () =
@@ -119,23 +126,9 @@ let TestControlFlow2 () =
         }
         """
 
-    let tokens =
-        code.Split("\n")
-        |> Seq.map (fun s -> s.TrimStart())
-        |> String.concat "\n"
-        |> Seq.toList
-        |> Tokeniser.tokenise
-
-    let lines = List<string>()
-
-    let output = Runner.run lines.Add tokens |> Map.toSeq |> dict
-
-    let expected = [ "bool", Value.Boolean true ] |> dict
-
-    Assert.That(output, Is.EqualTo(expected))
-
+    let expected = [ "bool", Value.Boolean true ] |> Map.ofSeq
     let expectedLines = [ "It's true!" ] |> List<string>
-    Assert.That(lines, Is.EqualTo(expectedLines))
+    runTest code None expected expectedLines
 
 [<Test>]
 let TestArithmetic () =
@@ -147,14 +140,6 @@ let TestArithmetic () =
 
         var value = add3(1, 2, 3);
         """
-
-    let tokens =
-        code.Split("\n")
-        |> Seq.map (fun s -> s.TrimStart())
-        |> String.concat "\n"
-        |> Seq.toList
-        |> Tokeniser.tokenise
-        |> List<Token>
 
     let expectedTokens =
         [ Fun
@@ -187,19 +172,10 @@ let TestArithmetic () =
           Number 3
           CloseParenthesis
           Semicolon ]
-        |> List<Token>
+        |> Some
 
-    Assert.That(tokens, Is.EqualTo(expectedTokens))
-
-    let lines = List<string>()
-
-    let output = tokens |> List.ofSeq |> Runner.run lines.Add |> Map.toSeq |> dict
-
-    let expected = [ "value", Value.Number 6. ] |> dict
-
-    Assert.That(output, Is.EqualTo(expected))
-
-    Assert.That(lines, Is.Empty)
+    let expected = [ "value", Value.Number 6. ] |> Map.ofSeq
+    runTest code expectedTokens expected []
 
 
 [<Test>]

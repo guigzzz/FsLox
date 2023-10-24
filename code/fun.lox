@@ -1,13 +1,11 @@
 
 fun add_exclamation(v) {
-    var ret = v + "!";
-    return ret;
+    return v + "!";
 }
 
 fun hello(name) {
     var ret = "hello " + name;
-    var ret2 = add_exclamation(ret);
-    return ret2;
+    return add_exclamation(ret);
 }
 var name = "Guillaume";
 var hello = hello(name);
