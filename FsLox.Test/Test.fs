@@ -245,6 +245,41 @@ let TestFibonacci () =
     runTest code None expected expectedLines
 
 [<Test>]
+let TestFunctionCallInPrint () =
+    let code =
+        """
+        fun func() {
+            return 1;
+        }
+
+        print(func());
+        """
+
+    let expectedTokens =
+        [ Fun
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          OpenBracket
+          Return
+          Number 1
+          Semicolon
+          CloseBracket
+          Identifier "print"
+          OpenParenthesis
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          CloseParenthesis
+          Semicolon ]
+        |> Some
+
+    let expected = [] |> Map.ofSeq
+
+    let expectedLines = [ "1" ] |> List<string>
+    runTest code expectedTokens expected expectedLines
+
+[<Test>]
 let TestArithmetic () =
     let code =
         """

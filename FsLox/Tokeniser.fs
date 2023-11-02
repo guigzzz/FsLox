@@ -58,6 +58,13 @@ module Tokeniser =
 
         inner chars []
 
+    let notIdentifierCharacter (chars: char list) : bool =
+        match chars |> List.tryHead with
+        | Some c -> c |> Char.IsLetter || c |> Char.IsDigit || c = '_'
+        | _ -> false
+        |> not
+
+
     let rec tokenise chars : list<Token> =
         match chars with
         | [] -> []
@@ -67,15 +74,15 @@ module Tokeniser =
         | '\013' :: tail -> tokenise tail
         | ';' :: tail -> Semicolon :: tokenise tail
         | '=' :: tail -> Equals :: tokenise tail
-        | 'v' :: 'a' :: 'r' :: tail -> Var :: tokenise tail
-        | 'f' :: 'u' :: 'n' :: tail -> Fun :: tokenise tail
-        | 't' :: 'r' :: 'u' :: 'e' :: tail -> Boolean true :: tokenise tail
-        | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail -> Boolean false :: tokenise tail
-        | 'i' :: 'f' :: tail -> If :: tokenise tail
-        | 'e' :: 'l' :: 's' :: 'e' :: tail -> Else :: tokenise tail
+        | 'v' :: 'a' :: 'r' :: tail when notIdentifierCharacter tail -> Var :: tokenise tail
+        | 'f' :: 'u' :: 'n' :: tail when notIdentifierCharacter tail -> Fun :: tokenise tail
+        | 't' :: 'r' :: 'u' :: 'e' :: tail when notIdentifierCharacter tail -> Boolean true :: tokenise tail
+        | 'f' :: 'a' :: 'l' :: 's' :: 'e' :: tail when notIdentifierCharacter tail -> Boolean false :: tokenise tail
+        | 'i' :: 'f' :: tail when notIdentifierCharacter tail -> If :: tokenise tail
+        | 'e' :: 'l' :: 's' :: 'e' :: tail when notIdentifierCharacter tail -> Else :: tokenise tail
         | '<' :: '-' :: tail -> BackArrow :: tokenise tail
-        | 'f' :: 'o' :: 'r' :: tail -> For :: tokenise tail
-        | 'i' :: 'n' :: tail -> In :: tokenise tail
+        | 'f' :: 'o' :: 'r' :: tail when notIdentifierCharacter tail -> For :: tokenise tail
+        | 'i' :: 'n' :: tail when notIdentifierCharacter tail -> In :: tokenise tail
         | '.' :: '.' :: tail -> DoubleDot :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
@@ -83,7 +90,7 @@ module Tokeniser =
         | '}' :: tail -> CloseBracket :: tokenise tail
         | ',' :: tail -> Comma :: tokenise tail
         | '+' :: tail -> Plus :: tokenise tail
-        | 'r' :: 'e' :: 't' :: 'u' :: 'r' :: 'n' :: tail -> Return :: tokenise tail
+        | 'r' :: 'e' :: 't' :: 'u' :: 'r' :: 'n' :: tail when notIdentifierCharacter tail -> Return :: tokenise tail
         | '"' :: tail ->
             match fetchString tail with
             | (None, _) -> failwith "unbounded string"

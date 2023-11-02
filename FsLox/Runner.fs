@@ -8,8 +8,9 @@ module Runner =
 
             match tokens with
             | [] -> failwith $"Expected some more tokens"
-            | b :: tail when b = openBracket -> inner tail cur (bracketCount + 1)
+            | b :: tail when b = openBracket -> inner tail (b :: cur) (bracketCount + 1)
             | b :: tail when b = closeBracket && bracketCount = 1 -> (cur |> List.rev, tail)
+            | b :: tail when b = closeBracket -> inner tail (b :: cur) (bracketCount - 1)
             | token :: tail -> inner tail (token :: cur) bracketCount
 
         inner tokens [] 1
@@ -45,7 +46,7 @@ module Runner =
             match tokens with
             | tok :: tail when tok = stopToken -> cur |> List.rev, tail
             | h :: tail -> inner tail (h :: cur)
-            | [] -> failwith $"Expected to find a semicolon"
+            | [] -> failwith $"Expected to find a {stopToken}"
 
         inner tokens []
 
@@ -69,7 +70,9 @@ module Runner =
                 inner tail [] (cur :: out)
             | t :: tail -> inner tail (t :: cur) out
 
-        inner toks [] []
+        match toks with
+        | [] -> []
+        | toks -> inner toks [] []
 
     let callFunc (callArgs: Value list) (name: string) (context: Context) : Value =
         let func = context |> Context.getFunc name
@@ -205,19 +208,11 @@ module Runner =
 
                 inner newTail newContext
 
-            | Identifier name :: OpenParenthesis :: tail ->
+            | (Identifier _ :: OpenParenthesis :: _) as tail ->
 
                 let expressionTokens, tail = fetchExpressionArgs tail Semicolon
 
-                let args, expressionTail =
-                    fetchMatchingBracket expressionTokens OpenParenthesis CloseParenthesis
-
-                let callArgs = args |> splitByToken Comma |> List.map (evalExpression context)
-
-                if expressionTail |> List.isEmpty |> not && expressionTail <> [ Semicolon ] then
-                    failwith $"operations after a function call isn't yet supported. Toks: {tail}"
-
-                context |> callFunc callArgs name |> ignore
+                let _ = evalExpression context expressionTokens
 
                 inner tail context
 
