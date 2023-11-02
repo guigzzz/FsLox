@@ -58,18 +58,20 @@ module Runner =
 
         inner tokens []
 
-    let splitByToken (token: Token) (toks: Token list) : Token list list =
-        let rec inner (toks: Token list) (cur: Token list) (out: Token list list) =
+    let splitByTokenPreserveParens (token: Token) (toks: Token list) : Token list list =
+        let rec inner (toks: Token list) (cur: Token list) (out: Token list list) (curBracket: int) =
             match toks with
             | [] -> ((cur |> List.rev) :: out) |> List.rev
-            | t :: tail when t = token ->
+            | t :: tail when t = token && curBracket = 0 ->
                 let cur = cur |> List.rev
-                inner tail [] (cur :: out)
-            | t :: tail -> inner tail (t :: cur) out
+                inner tail [] (cur :: out) curBracket
+            | t :: tail when t = OpenParenthesis -> inner tail (t :: cur) out (curBracket + 1)
+            | t :: tail when t = CloseParenthesis -> inner tail (t :: cur) out (curBracket - 1)
+            | t :: tail -> inner tail (t :: cur) out curBracket
 
         match toks with
         | [] -> []
-        | toks -> inner toks [] []
+        | toks -> inner toks [] [] 0
 
     let callFunc (callArgs: Value list) (name: string) (context: Context) : Value =
         let func = context |> Context.getFunc name
@@ -89,7 +91,9 @@ module Runner =
             Value.add lValue rValue
         | Identifier name :: OpenParenthesis :: tail ->
             let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
-            let callArgs = args |> splitByToken Comma |> List.map (evalExpression context)
+
+            let callArgs =
+                args |> splitByTokenPreserveParens Comma |> List.map (evalExpression context)
 
             if tail |> List.isEmpty |> not then
                 failwith $"operations after a function call isn't yet supported. Toks: {tail}"

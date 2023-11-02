@@ -6,6 +6,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="TestRunner.fs" />
     <Compile Include="Test.fs" />
   </ItemGroup>
   <ItemGroup>

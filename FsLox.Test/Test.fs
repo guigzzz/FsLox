@@ -245,7 +245,7 @@ let TestFibonacci () =
     runTest code None expected expectedLines
 
 [<Test>]
-let TestFunctionCallInPrint () =
+let TestNestedFunctions () =
     let code =
         """
         fun func() {
@@ -278,6 +278,26 @@ let TestFunctionCallInPrint () =
 
     let expectedLines = [ "1" ] |> List<string>
     runTest code expectedTokens expected expectedLines
+
+[<Test>]
+let TestNonTrivialFunctionCallPattern () =
+    let code =
+        """
+        fun my_print(a, suffix) {
+            print(a + suffix);
+        }
+
+        fun concat(a, b) {
+            return a + b;
+        }
+
+        my_print(concat("hello", " world"), " !");
+        """
+
+    let expected = [] |> Map.ofSeq
+
+    let expectedLines = [ "hello world !" ] |> List<string>
+    runTest code None expected expectedLines
 
 [<Test>]
 let TestFunctionCapture () =
