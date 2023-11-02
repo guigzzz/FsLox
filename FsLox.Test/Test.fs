@@ -280,6 +280,48 @@ let TestFunctionCallInPrint () =
     runTest code expectedTokens expected expectedLines
 
 [<Test>]
+let TestFunctionCapture () =
+    let code =
+        """
+        var a = 1;
+
+        fun func() {
+            return a;
+        }
+
+        print(func());
+        """
+
+    let expectedTokens =
+        [ Var
+          Identifier "a"
+          Equals
+          Number 1
+          Semicolon
+          Fun
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          OpenBracket
+          Return
+          Identifier "a"
+          Semicolon
+          CloseBracket
+          Identifier "print"
+          OpenParenthesis
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          CloseParenthesis
+          Semicolon ]
+        |> Some
+
+    let expected = [ "a", Value.Number 1 ] |> Map.ofSeq
+
+    let expectedLines = [ "1" ] |> List<string>
+    runTest code expectedTokens expected expectedLines
+
+[<Test>]
 let TestArithmetic () =
     let code =
         """

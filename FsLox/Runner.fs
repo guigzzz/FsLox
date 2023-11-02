@@ -77,7 +77,10 @@ module Runner =
     let callFunc (callArgs: Value list) (name: string) (context: Context) : Value =
         let func = context |> Context.getFunc name
         let localFunctionState = callArgs |> Seq.zip func.Args |> Map.ofSeq
-        func.Func localFunctionState
+
+        let allState = context.Variables |> Map.merge localFunctionState
+
+        func.Func allState
 
     let rec evalExpression (context: Context) (tokens: Token list) : Value =
         match tokens with
