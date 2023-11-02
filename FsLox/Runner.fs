@@ -7,7 +7,7 @@ module Runner =
         let rec inner tokens cur bracketCount =
 
             match tokens with
-            | [] -> failwith $"Expected some more tokens"
+            | [] -> failwith $"Expected some more tokens, cur={cur}, bracketCount={bracketCount}"
             | b :: tail when b = openBracket -> inner tail (b :: cur) (bracketCount + 1)
             | b :: tail when b = closeBracket && bracketCount = 1 -> (cur |> List.rev, tail)
             | b :: tail when b = closeBracket -> inner tail (b :: cur) (bracketCount - 1)
@@ -15,17 +15,14 @@ module Runner =
 
         inner tokens [] 1
 
-    let fetchBlock (tokens: Token list) : Token list * Token list =
-
-        let rec inner tokens cur bracketCount =
-
-            match tokens with
-            | [] -> failwith $"Expected some more tokens"
-            | OpenBracket :: tail -> inner tail cur (bracketCount + 1)
-            | CloseBracket :: tail when bracketCount = 1 -> (cur |> List.rev, tail)
-            | token :: tail -> inner tail (token :: cur) bracketCount
-
-        inner tokens [] 0
+    let fetchMatchingBracketExpectOpen
+        (tokens: Token list)
+        (openBracket: Token)
+        (closeBracket: Token)
+        : Token list * Token list =
+        match tokens with
+        | b :: tail when b = openBracket -> fetchMatchingBracket tail openBracket closeBracket
+        | tail -> failwith $"Expected {openBracket} but got: {tail}"
 
     let fetchListOfArgs (tokens: Token list) : string list * Token list =
 
@@ -115,12 +112,12 @@ module Runner =
         | None -> failwith $"expression {expressionTokens} did not evaluate to a bool"
         | Some b ->
 
-            let trueBlock, tail = fetchBlock (OpenBracket :: tail)
+            let trueBlock, tail = fetchMatchingBracket tail OpenBracket CloseBracket
 
             let falseBlock, tail =
                 match tail with
                 | Else :: tail ->
-                    let block, tail = fetchBlock tail
+                    let block, tail = fetchMatchingBracketExpectOpen tail OpenBracket CloseBracket
                     block |> Some, tail
                 | _ -> None, tail
 
@@ -200,7 +197,7 @@ module Runner =
                 let (newContext, newTail) =
                     let args, tail = fetchListOfArgs tail
 
-                    let block, tail = fetchBlock tail
+                    let block, tail = fetchMatchingBracketExpectOpen tail OpenBracket CloseBracket
 
                     let runFunc vars =
                         inner block ({ context with Variables = vars }) |> snd

@@ -322,6 +322,59 @@ let TestFunctionCapture () =
     runTest code expectedTokens expected expectedLines
 
 [<Test>]
+let TestLocalFunc () =
+    let code =
+        """
+        fun func() {
+            fun inner() {
+                return 1;
+            }
+
+            return inner();
+        }
+
+        print(func());
+        """
+
+    let expectedTokens =
+        [ Fun
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          OpenBracket
+
+          Fun
+          Identifier "inner"
+          OpenParenthesis
+          CloseParenthesis
+          OpenBracket
+          Return
+          Number 1
+          Semicolon
+          CloseBracket
+
+          Return
+          Identifier "inner"
+          OpenParenthesis
+          CloseParenthesis
+          Semicolon
+          CloseBracket
+          Identifier "print"
+          OpenParenthesis
+          Identifier "func"
+          OpenParenthesis
+          CloseParenthesis
+          CloseParenthesis
+          Semicolon ]
+        |> Some
+
+    let expected = [] |> Map.ofSeq
+
+    let expectedLines = [ "1" ] |> List<string>
+    runTest code expectedTokens expected expectedLines
+
+
+[<Test>]
 let TestArithmetic () =
     let code =
         """
