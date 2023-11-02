@@ -22,6 +22,21 @@ module Value =
         | Number l, Number r -> Number(l + r)
         | _ -> failwith $"Can't add these values as not the right types: {l}, {r}"
 
+    let subtract (l: Value) (r: Value) : Value =
+        match l, r with
+        | Number l, Number r -> Number(l - r)
+        | _ -> failwith $"Can't subtract these values as not the right types: {l}, {r}"
+
+    let multiply (l: Value) (r: Value) : Value =
+        match l, r with
+        | Number l, Number r -> Number(l * r)
+        | _ -> failwith $"Can't multiply these values as not the right types: {l}, {r}"
+
+    let divide (l: Value) (r: Value) : Value =
+        match l, r with
+        | Number l, Number r -> Number(l / r)
+        | _ -> failwith $"Can't divide these values as not the right types: {l}, {r}"
+
     let toBoolean (value: Value) : bool option =
         match value with
         | Boolean b -> b |> Some
@@ -103,3 +118,28 @@ module ValueContext =
         | Token.Number n -> n |> Some
         | _ -> failwith $"Token does not represent a value: {tok}"
         |> Option.defaultWith (fun () -> failwith $"{tok} did not represent a numeric value")
+
+
+type Operator =
+    | Add
+    | Multiply
+    | Divide
+    | Subtract
+
+[<RequireQualifiedAccess>]
+module Operator =
+
+    let ofToken (token: Token) : Operator option =
+        match token with
+        | Plus -> Add |> Some
+        | Token.Subtract -> Subtract |> Some
+        | Token.Divide -> Divide |> Some
+        | Token.Multiply -> Multiply |> Some
+        | _ -> None
+
+    let apply (operator: Operator) (left : Value) (right : Value) : Value =
+        match operator with
+        | Add -> Value.add left right
+        | Subtract -> Value.subtract left right
+        | Divide -> Value.divide left right
+        | Multiply -> Value.multiply left right

@@ -393,6 +393,40 @@ let TestLocalFunc () =
     let expectedLines = [ "1" ] |> List<string>
     runTest code expectedTokens expected expectedLines
 
+[<Test>]
+let TestMath () =
+    let code =
+        """
+        var v = (2 * (3 + 4) / 2 + 3) / 2;
+        """
+
+    let expectedTokens =
+        [ Var
+          Identifier "v"
+          Equals
+          OpenParenthesis
+          Number 2
+          Multiply
+          OpenParenthesis
+          Number 3
+          Plus
+          Number 4
+          CloseParenthesis
+          Divide
+          Number 2
+          Plus
+          Number 3
+          CloseParenthesis
+          Divide
+          Number 2
+          Semicolon ]
+        |> Some
+
+    let expected = [ "v", Value.Number 5 ] |> Map.ofSeq
+
+    let expectedLines = [ ] |> List<string>
+    runTest code expectedTokens expected expectedLines
+
 
 [<Test>]
 let TestArithmetic () =

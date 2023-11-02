@@ -17,6 +17,9 @@ type Token =
     | OpenBracket
     | CloseBracket
     | Plus
+    | Subtract
+    | Multiply
+    | Divide
     | For
     | In
     | DoubleDot
@@ -90,6 +93,9 @@ module Tokeniser =
         | '}' :: tail -> CloseBracket :: tokenise tail
         | ',' :: tail -> Comma :: tokenise tail
         | '+' :: tail -> Plus :: tokenise tail
+        | '-' :: tail -> Subtract :: tokenise tail
+        | '*' :: tail -> Multiply :: tokenise tail
+        | '/' :: tail -> Divide :: tokenise tail
         | 'r' :: 'e' :: 't' :: 'u' :: 'r' :: 'n' :: tail when notIdentifierCharacter tail -> Return :: tokenise tail
         | '"' :: tail ->
             match fetchString tail with

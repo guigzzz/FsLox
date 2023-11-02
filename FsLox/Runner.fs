@@ -81,26 +81,62 @@ module Runner =
 
         func.Func allState
 
+    let removeOuterParens (toks: Token list) : Token list =
+        match toks with
+        | OpenParenthesis :: tail ->
+            match tail |> List.rev with
+            | CloseParenthesis :: tail -> tail |> List.rev
+            | _ -> toks
+        | _ -> toks
+
     let rec evalExpression (context: Context) (tokens: Token list) : Value =
-        match tokens with
-        | Identifier name :: [] -> context |> Context.getVar name
-        | token :: [] -> ValueContext.ofToken token context
-        | token :: Plus :: tail ->
-            let rValue = evalExpression context tail
-            let lValue = ValueContext.ofToken token context
-            Value.add lValue rValue
-        | Identifier name :: OpenParenthesis :: tail ->
-            let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
 
-            let callArgs =
-                args |> splitByTokenPreserveParens Comma |> List.map (evalExpression context)
+        let value =
+            seq {
+                for opToken in [ Plus; Token.Subtract; Token.Multiply; Token.Divide ] do
 
-            if tail |> List.isEmpty |> not then
-                failwith $"operations after a function call isn't yet supported. Toks: {tail}"
+                    let tokenSplits = tokens |> splitByTokenPreserveParens opToken
 
-            context |> callFunc callArgs name
+                    match tokenSplits with
+                    | [] -> failwith "Should never happen"
+                    | [ _ ] -> ()
+                    | _ ->
 
-        | _ -> failwith $"Unsupported expression: {tokens}"
+                        let apply =
+                            opToken
+                            |> Operator.ofToken
+                            |> Option.defaultWith (fun () -> failwith $"Unknown operator token {opToken}")
+                            |> Operator.apply
+
+                        let parts = tokenSplits |> List.map (List.map string >> String.concat ", ") |> String.concat " <|> "
+                        printfn $"Split by {opToken}, parts={parts}"
+
+                        let values =
+                            tokenSplits |> List.map removeOuterParens |> List.map (evalExpression context)
+
+                        yield values |> List.tail |> List.fold apply (List.head values)
+            }
+            |> Seq.tryHead
+
+        match value with
+        | Some v -> v
+        | None ->
+
+            match tokens with
+            | Identifier name :: [] -> context |> Context.getVar name
+            | token :: [] -> ValueContext.ofToken token context
+            | Identifier name :: OpenParenthesis :: tail ->
+                let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
+
+                let callArgs =
+                    args |> splitByTokenPreserveParens Comma |> List.map (evalExpression context)
+
+                if tail |> List.isEmpty |> not then
+                    failwith $"operations after a function call isn't yet supported. Toks: {tail}"
+
+                context |> callFunc callArgs name
+
+            | _ -> failwith $"Unsupported expression: {tokens}"
 
     type FunctionCallArgValue =
         | Variable of string
