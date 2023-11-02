@@ -109,7 +109,6 @@ module Runner =
                             |> Operator.apply
 
                         let parts = tokenSplits |> List.map (List.map string >> String.concat ", ") |> String.concat " <|> "
-                        printfn $"Split by {opToken}, parts={parts}"
 
                         let values =
                             tokenSplits |> List.map removeOuterParens |> List.map (evalExpression context)
