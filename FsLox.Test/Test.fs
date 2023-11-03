@@ -424,8 +424,32 @@ let TestMath () =
 
     let expected = [ "v", Value.Number 5 ] |> Map.ofSeq
 
-    let expectedLines = [ ] |> List<string>
+    let expectedLines = [] |> List<string>
     runTest code expectedTokens expected expectedLines
+
+[<Test>]
+let TestComplexExpression () =
+    let code =
+        """
+        fun a() {
+            return 1;
+        }
+
+        fun b() {
+            return 2;
+        }
+
+        fun c() {
+            return 3;
+        }
+
+        var v = (a() + b()) / b() * c();
+        """
+
+    let expected = [ "v", Value.Number 4.5 ] |> Map.ofSeq
+
+    let expectedLines = [] |> List<string>
+    runTest code None expected expectedLines
 
 
 [<Test>]

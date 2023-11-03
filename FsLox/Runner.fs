@@ -82,8 +82,19 @@ module Runner =
         func.Func allState
 
     let removeOuterParens (toks: Token list) : Token list =
+        let rec isMatchedParensAround (toks: Token list) (curBracket: int) =
+            match toks with
+            | h :: tail when h = OpenParenthesis -> isMatchedParensAround tail (curBracket + 1)
+            | h :: tail when h = CloseParenthesis ->
+                if curBracket = 1 then
+                    List.isEmpty tail
+                else
+                    isMatchedParensAround tail (curBracket - 1)
+            | _ :: tail -> isMatchedParensAround tail curBracket
+            | [] -> false
+
         match toks with
-        | OpenParenthesis :: tail ->
+        | OpenParenthesis :: tail when isMatchedParensAround tail 1 ->
             match tail |> List.rev with
             | CloseParenthesis :: tail -> tail |> List.rev
             | _ -> toks
@@ -101,14 +112,11 @@ module Runner =
                     | [] -> failwith "Should never happen"
                     | [ _ ] -> ()
                     | _ ->
-
                         let apply =
                             opToken
                             |> Operator.ofToken
                             |> Option.defaultWith (fun () -> failwith $"Unknown operator token {opToken}")
                             |> Operator.apply
-
-                        let parts = tokenSplits |> List.map (List.map string >> String.concat ", ") |> String.concat " <|> "
 
                         let values =
                             tokenSplits |> List.map removeOuterParens |> List.map (evalExpression context)
@@ -131,7 +139,8 @@ module Runner =
                     args |> splitByTokenPreserveParens Comma |> List.map (evalExpression context)
 
                 if tail |> List.isEmpty |> not then
-                    failwith $"operations after a function call isn't yet supported. Toks: {tail}"
+                    let tailStr = tail |> List.map string |> String.concat ", "
+                    failwith $"operations after a function call isn't yet supported. Toks: {tailStr}"
 
                 context |> callFunc callArgs name
 
