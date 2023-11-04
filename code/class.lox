@@ -1,0 +1,14 @@
+
+class HelloWorldPrinter {
+    constructor() {
+        this.hello = "hello";
+        this.world = " world";
+    }
+
+    call() {
+        print(this.hello + this.world)
+    }
+}
+
+var c = HelloWorldPrinter();
+c.call();

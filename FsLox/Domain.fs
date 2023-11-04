@@ -10,19 +10,13 @@ and Object =
 and Function =
     { Name: string
       Args: string list
-      Func: Variables -> Value }
-
-    override l.Equals r =
-        match r with
-        | :? Function as r -> l.Name = r.Name
-        | _ -> false
-
-    override this.GetHashCode() = this.Name.GetHashCode()
+      Func: StructurallyNull<Variables -> Value> }
 
 and Value =
     | String of string
     | Number of double
     | Boolean of bool
+    | Object of Object
     | Unit
 
 [<RequireQualifiedAccess>]
@@ -66,13 +60,40 @@ module Value =
         | Number b -> b |> Some
         | _ -> None
 
+    let toObject (value: Value) : Object option =
+        match value with
+        | Object o -> o |> Some
+        | _ -> None
+
 
 [<RequireQualifiedAccess>]
 module Function =
     let make name args func : Function =
         { Name = name
           Args = args
-          Func = func }
+          Func = StructurallyNull.make func }
+
+    let call state (f: Function) = f.Func.V state
+
+[<RequireQualifiedAccess>]
+module Object =
+
+    let makeInstantiator (typ: string) (funcs: Map<string, Function>) : Function =
+        let defaultConstructor () =
+            let object =
+                { Type = typ
+                  Variables = Map.empty
+                  Functions = funcs }
+
+            Function.make "constructor" List.empty (fun _ -> object |> Object)
+
+        funcs |> Map.tryFind "constructor" |> Option.defaultWith defaultConstructor
+
+    let getFunc (name: string) (object: Object) : Function =
+        object.Functions
+        |> Map.tryFind name
+        |> Option.defaultWith (fun () -> failwith $"Can't call {name} on object of type {object.Type}")
+
 
 type Context =
     { Variables: Variables

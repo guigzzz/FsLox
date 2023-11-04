@@ -25,7 +25,6 @@ module Runner =
         | tail -> failwith $"Expected {openBracket} but got: {tail}"
 
     let fetchListOfArgs (tokens: Token list) : string list * Token list =
-
         let rec inner (tokens: Token list) (cur: string list) =
             match tokens with
             | [] -> ([], [])
@@ -34,8 +33,11 @@ module Runner =
             | Identifier iden :: tail -> inner tail (iden :: cur)
             | a :: _ -> failwith $"Unexpected token: {a}"
 
+        inner tokens []
+
+    let fetchListOfArgsExpectOpen (tokens: Token list) : string list * Token list =
         match tokens with
-        | OpenParenthesis :: tail -> inner tail []
+        | OpenParenthesis :: tail -> fetchListOfArgs tail
         | _ -> failwith "unexpected token list"
 
     let fetchExpressionArgs (tokens: Token list) (stopToken: Token) : Token list * Token list =
@@ -73,13 +75,16 @@ module Runner =
         | [] -> []
         | toks -> inner toks [] [] 0
 
-    let callFunc (callArgs: Value list) (name: string) (context: Context) : Value =
-        let func = context |> Context.getFunc name
+    let callFunc (callArgs: Value list) (context) (func: Function) : Value =
         let localFunctionState = callArgs |> Seq.zip func.Args |> Map.ofSeq
 
         let allState = context.Variables |> Map.merge localFunctionState
 
-        func.Func allState
+        func |> Function.call allState
+
+    let callFuncWithContext (callArgs: Value list) (name: string) (context: Context) : Value =
+        let func = context |> Context.getFunc name
+        callFunc callArgs context func
 
     let removeOuterParens (toks: Token list) : Token list =
         let rec isMatchedParensAround (toks: Token list) (curBracket: int) =
@@ -132,6 +137,29 @@ module Runner =
             match tokens with
             | Identifier name :: [] -> context |> Context.getVar name
             | token :: [] -> ValueContext.ofToken token context
+            | Identifier objectInstance :: Dot :: Identifier memberFunction :: OpenParenthesis :: tail ->
+
+                let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
+
+                let callArgs =
+                    args |> splitByTokenPreserveParens Comma |> List.map (evalExpression context)
+
+                if tail |> List.isEmpty |> not then
+                    let tailStr = tail |> List.map string |> String.concat ", "
+                    failwith $"operations after a function call isn't yet supported. Toks: {tailStr}"
+
+
+                let obj =
+                    context
+                    |> Context.getVar objectInstance
+                    |> Value.toObject
+                    |> Option.defaultWith (fun () -> failwith $"{objectInstance} is not an object!")
+
+                let func = obj |> Object.getFunc memberFunction
+
+                func |> callFunc callArgs context
+
+
             | Identifier name :: OpenParenthesis :: tail ->
                 let args, tail = fetchMatchingBracket tail OpenParenthesis CloseParenthesis
 
@@ -142,7 +170,7 @@ module Runner =
                     let tailStr = tail |> List.map string |> String.concat ", "
                     failwith $"operations after a function call isn't yet supported. Toks: {tailStr}"
 
-                context |> callFunc callArgs name
+                context |> callFuncWithContext callArgs name
 
             | _ -> failwith $"Unsupported expression: {tokens}"
 
@@ -196,6 +224,28 @@ module Runner =
 
                     context |> Context.addVar name value, tail
 
+            let parseFunction functionName toks : Token list * Function =
+                let args, tail = fetchListOfArgsExpectOpen toks
+
+                let block, tail = fetchMatchingBracketExpectOpen tail OpenBracket CloseBracket
+
+                let runFunc vars =
+                    inner block ({ context with Variables = vars }) |> snd
+
+                tail, Function.make functionName args runFunc
+
+            let extractClassFunctions toks : Map<string, Function> =
+                let rec inner toks funcs =
+                    match toks with
+                    | [] -> funcs
+                    | Identifier name :: tail ->
+                        let tail, func = parseFunction name tail
+                        let newFuncs = funcs |> Map.add name func
+                        inner tail newFuncs
+
+                    | _ -> failwith $"Unexpected class tokens: {toks}"
+
+                inner toks Map.empty
 
             match tokens with
             | [] -> context, Unit
@@ -243,15 +293,7 @@ module Runner =
 
             | Fun :: Identifier functionName :: tail ->
                 let (newContext, newTail) =
-                    let args, tail = fetchListOfArgs tail
-
-                    let block, tail = fetchMatchingBracketExpectOpen tail OpenBracket CloseBracket
-
-                    let runFunc vars =
-                        inner block ({ context with Variables = vars }) |> snd
-
-                    let func = Function.make functionName args runFunc
-
+                    let tail, func = parseFunction functionName tail
                     context |> Context.addFunc functionName func, tail
 
                 inner newTail newContext
@@ -264,10 +306,26 @@ module Runner =
 
                 inner tail context
 
+            | (Identifier _ :: Dot :: Identifier _ :: _) as tail ->
+                let expressionTokens, tail = fetchExpressionArgs tail Semicolon
+                let _ = evalExpression context expressionTokens
+                inner tail context
+
             | Return :: tail ->
                 let expressionTokens, tail = fetchExpressionArgs tail Semicolon
                 let value = evalExpression context expressionTokens
                 context, value
+
+            | Class :: Identifier clazz :: tail ->
+                let classToks, tail = fetchMatchingBracketExpectOpen tail OpenBracket CloseBracket
+
+                let funcs = extractClassFunctions classToks
+
+                let instantiator = Object.makeInstantiator clazz funcs
+
+                let context = context |> Context.addFunc clazz instantiator
+
+                inner tail context
 
             | tokens -> failwith $"invalid expression: {tokens}. Context: {context}"
 

@@ -28,6 +28,9 @@ type Token =
     | If
     | Else
     | BackArrow
+    | Class
+    | Dot
+    | This
 
 [<RequireQualifiedAccess>]
 module Tokeniser =
@@ -87,6 +90,9 @@ module Tokeniser =
         | 'f' :: 'o' :: 'r' :: tail when notIdentifierCharacter tail -> For :: tokenise tail
         | 'i' :: 'n' :: tail when notIdentifierCharacter tail -> In :: tokenise tail
         | '.' :: '.' :: tail -> DoubleDot :: tokenise tail
+        | 'c' :: 'l' :: 'a' :: 's' :: 's' :: tail -> Class :: tokenise tail
+        | 't' :: 'h' :: 'i' :: 's' :: tail -> This :: tokenise tail
+        | '.' :: tail -> Dot :: tokenise tail
         | '(' :: tail -> OpenParenthesis :: tokenise tail
         | ')' :: tail -> CloseParenthesis :: tokenise tail
         | '{' :: tail -> OpenBracket :: tokenise tail
