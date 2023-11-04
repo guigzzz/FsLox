@@ -12,21 +12,35 @@ and Function =
       Args: string list
       Func: StructurallyNull<Variables -> Value> }
 
+and ArrayList = { Values: Value[] }
+
 and Value =
     | String of string
     | Number of double
     | Boolean of bool
     | Object of Object
+    | ArrayList of ArrayList
     | Unit
 
 [<RequireQualifiedAccess>]
 module Value =
 
-    let toString (value: Value) : string =
+    let rec toString (value: Value) : string =
         match value with
         | String s -> s
         | Number n -> n |> string
         | Boolean b -> b |> string
+        | Object o ->
+            let vars =
+                o.Variables
+                |> Map.toSeq
+                |> Seq.map (fun (k, v) -> $"{k}: {toString v}")
+                |> String.concat ", "
+
+            $"{o.Type}({vars})"
+        | ArrayList a ->
+            let vars = a.Values |> Seq.map toString |> String.concat ", "
+            $"[{vars}]"
         | Unit -> "()"
 
     let add (l: Value) (r: Value) : Value =
@@ -65,6 +79,11 @@ module Value =
         | Object o -> o |> Some
         | _ -> None
 
+    let toArrayList (value: Value) : ArrayList option =
+        match value with
+        | ArrayList a -> a |> Some
+        | _ -> None
+
 
 [<RequireQualifiedAccess>]
 module Function =
@@ -100,6 +119,37 @@ type Context =
       Functions: Map<string, Function> }
 
 [<RequireQualifiedAccess>]
+module ListObject =
+
+    let make (initValues: Value list) =
+        let rec append vars =
+            let value =
+                vars
+                |> Map.tryFind "internal_array"
+                |> Option.bind Value.toArrayList
+                |> Option.defaultWith (fun () -> failwith "Failed to fetch List array")
+
+            let valueToAdd = vars |> Map.find "value"
+
+            let newArray = valueToAdd |> Array.singleton |> Array.append value.Values
+
+            { Type = "List"
+              Variables = [ "internal_array", { Values = newArray } |> ArrayList ] |> Map.ofSeq
+              Functions = [ "append", Function.make "append" [ "value" ] append ] |> Map.ofSeq }
+            |> Object
+
+        { Type = "List"
+          Variables =
+            [ "internal_array", { Values = initValues |> Array.ofList } |> ArrayList ]
+            |> Map.ofSeq
+
+          Functions = [ "append", Function.make "append" [ "value" ] append ] |> Map.ofSeq }
+        |> Object
+
+    let empty = List.empty |> make
+
+
+[<RequireQualifiedAccess>]
 module Context =
     let make (print: string -> unit) =
         let printBuiltinArg = ""
@@ -109,7 +159,10 @@ module Context =
             Unit
 
         { Variables = Map.empty
-          Functions = [ "print", Function.make "print" [ printBuiltinArg ] print ] |> Map.ofSeq }
+          Functions =
+            [ "print", Function.make "print" [ printBuiltinArg ] print
+              "list", Function.make "list" [] (fun _ -> ListObject.empty) ]
+            |> Map.ofSeq }
 
     let getFunc (name: string) (c: Context) : Function =
         c.Functions

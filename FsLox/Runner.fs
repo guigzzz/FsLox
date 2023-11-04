@@ -75,16 +75,17 @@ module Runner =
         | [] -> []
         | toks -> inner toks [] [] 0
 
-    let callFunc (callArgs: Value list) (context) (func: Function) : Value =
+    let callFunc (callArgs: Value list) (context) (extraContext: Map<string, Value>) (func: Function) : Value =
         let localFunctionState = callArgs |> Seq.zip func.Args |> Map.ofSeq
 
-        let allState = context.Variables |> Map.merge localFunctionState
+        let allState =
+            extraContext |> Map.merge context.Variables |> Map.merge localFunctionState
 
         func |> Function.call allState
 
     let callFuncWithContext (callArgs: Value list) (name: string) (context: Context) : Value =
         let func = context |> Context.getFunc name
-        callFunc callArgs context func
+        callFunc callArgs context Map.empty func
 
     let removeOuterParens (toks: Token list) : Token list =
         let rec isMatchedParensAround (toks: Token list) (curBracket: int) =
@@ -157,7 +158,7 @@ module Runner =
 
                 let func = obj |> Object.getFunc memberFunction
 
-                func |> callFunc callArgs context
+                func |> callFunc callArgs context obj.Variables
 
 
             | Identifier name :: OpenParenthesis :: tail ->
