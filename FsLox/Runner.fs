@@ -250,7 +250,7 @@ module Runner =
                     let runFunc vars =
                         inner block ({ context with Variables = vars }) |> snd
 
-                    let func = Function.make args runFunc
+                    let func = Function.make functionName args runFunc
 
                     context |> Context.addFunc functionName func, tail
 

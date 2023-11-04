@@ -1,6 +1,25 @@
 namespace Lox
 
-type Value =
+type Variables = Map<string, Value>
+
+and Object =
+    { Type: string
+      Variables: Variables
+      Functions: Map<string, Function> }
+
+and Function =
+    { Name: string
+      Args: string list
+      Func: Variables -> Value }
+
+    override l.Equals r =
+        match r with
+        | :? Function as r -> l.Name = r.Name
+        | _ -> false
+
+    override this.GetHashCode() = this.Name.GetHashCode()
+
+and Value =
     | String of string
     | Number of double
     | Boolean of bool
@@ -47,15 +66,13 @@ module Value =
         | Number b -> b |> Some
         | _ -> None
 
-type Variables = Map<string, Value>
-
-type Function =
-    { Args: string list
-      Func: Variables -> Value }
 
 [<RequireQualifiedAccess>]
 module Function =
-    let make args func : Function = { Args = args; Func = func }
+    let make name args func : Function =
+        { Name = name
+          Args = args
+          Func = func }
 
 type Context =
     { Variables: Variables
@@ -71,7 +88,7 @@ module Context =
             Unit
 
         { Variables = Map.empty
-          Functions = [ "print", Function.make [ printBuiltinArg ] print ] |> Map.ofSeq }
+          Functions = [ "print", Function.make "print" [ printBuiltinArg ] print ] |> Map.ofSeq }
 
     let getFunc (name: string) (c: Context) : Function =
         c.Functions
@@ -137,7 +154,7 @@ module Operator =
         | Token.Multiply -> Multiply |> Some
         | _ -> None
 
-    let apply (operator: Operator) (left : Value) (right : Value) : Value =
+    let apply (operator: Operator) (left: Value) (right: Value) : Value =
         match operator with
         | Add -> Value.add left right
         | Subtract -> Value.subtract left right
