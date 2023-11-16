@@ -108,10 +108,7 @@ module Object =
 
         funcs |> Map.tryFind "constructor" |> Option.defaultWith defaultConstructor
 
-    let getFunc (name: string) (object: Object) : Function =
-        object.Functions
-        |> Map.tryFind name
-        |> Option.defaultWith (fun () -> failwith $"Can't call {name} on object of type {object.Type}")
+    let getFunc (name: string) (object: Object) : Function = object.Functions |> Map.find' name
 
 
 type Context =
@@ -121,26 +118,28 @@ type Context =
 [<RequireQualifiedAccess>]
 module ListObject =
 
+    let private internalArray = "internal_array"
+
     let make (initValues: Value list) =
         let rec append vars =
             let value =
                 vars
-                |> Map.tryFind "internal_array"
-                |> Option.bind Value.toArrayList
-                |> Option.defaultWith (fun () -> failwith "Failed to fetch List array")
+                |> Map.find' internalArray
+                |> Value.toArrayList
+                |> Option.defaultWith (fun () -> failwith $"{internalArray} wasn't an array list")
 
-            let valueToAdd = vars |> Map.find "value"
+            let valueToAdd = vars |> Map.find' "value"
 
             let newArray = valueToAdd |> Array.singleton |> Array.append value.Values
 
             { Type = "List"
-              Variables = [ "internal_array", { Values = newArray } |> ArrayList ] |> Map.ofSeq
+              Variables = [ internalArray, { Values = newArray } |> ArrayList ] |> Map.ofSeq
               Functions = [ "append", Function.make "append" [ "value" ] append ] |> Map.ofSeq }
             |> Object
 
         { Type = "List"
           Variables =
-            [ "internal_array", { Values = initValues |> Array.ofList } |> ArrayList ]
+            [ internalArray, { Values = initValues |> Array.ofList } |> ArrayList ]
             |> Map.ofSeq
 
           Functions = [ "append", Function.make "append" [ "value" ] append ] |> Map.ofSeq }
@@ -164,12 +163,7 @@ module Context =
               "list", Function.make "list" [] (fun _ -> ListObject.empty) ]
             |> Map.ofSeq }
 
-    let getFunc (name: string) (c: Context) : Function =
-        c.Functions
-        |> Map.tryFind name
-        |> Option.defaultWith (fun () ->
-            let funs = c.Functions |> Map.keys |> String.concat ", "
-            failwith $"Failed to find function called {name}. Options were: {funs}")
+    let getFunc (name: string) (c: Context) : Function = c.Functions |> Map.find' name
 
     let addFunc (name: string) (func: Function) (c: Context) : Context =
         { c with
@@ -183,12 +177,7 @@ module Context =
         { c with
             Variables = c.Variables |> Map.remove name }
 
-    let getVar (name: string) (c: Context) : Value =
-        c.Variables
-        |> Map.tryFind name
-        |> Option.defaultWith (fun () ->
-            let funs = c.Variables |> Map.keys |> String.concat ", "
-            failwith $"Failed to find variable called '{name}'. Options were: {funs}")
+    let getVar (name: string) (c: Context) : Value = c.Variables |> Map.find' name
 
     let varExists (name: string) (c: Context) : bool = c.Variables |> Map.containsKey name
 

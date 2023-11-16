@@ -13,6 +13,13 @@ module Map =
 
     let mapValues f m = m |> Map.map (fun k v -> k, f v)
 
+    let find' k m =
+        let defaultThunk () =
+            let keyStr = m |> Map.keys |> Seq.map string |> String.concat ", "
+            failwith $"Failed to find {k} in map. Keys were: {keyStr}"
+
+        m |> Map.tryFind k |> Option.defaultWith defaultThunk
+
 [<CustomEquality; NoComparison>]
 type StructurallyNull<'T> =
     { V: 'T }
